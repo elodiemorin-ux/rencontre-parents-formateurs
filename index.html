@@ -255,7 +255,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script>
-firebase.initializeApp({
+const firebaseConfig = {
   apiKey: "AIzaSyCfMu6MDLsnCu3I8F8301kicrr0YePqRvg",
   authDomain: "rencontre-parents-format-d8272.firebaseapp.com",
   databaseURL: "https://rencontre-parents-format-d8272-default-rtdb.europe-west1.firebasedatabase.app",
@@ -263,7 +263,8 @@ firebase.initializeApp({
   storageBucket: "rencontre-parents-format-d8272.firebasestorage.app",
   messagingSenderId: "263688171585",
   appId: "1:263688171585:web:026d1b36b6ca3a678cd6c0"
-});
+};
+firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 const avatarColors = [
@@ -291,7 +292,6 @@ let adminMode = false;
 
 function getSlotKey(profId, heure) { return profId + '__' + heure; }
 
-// Affichage immédiat
 function initLocal() {
   reservations = {};
   professeurs.forEach(p => {
@@ -303,46 +303,46 @@ function initLocal() {
   updateBadge();
 }
 
-// Écoute Firebase temps réel
 function listenFirebase() {
-  db.ref('reservations').on('value', (snapshot) => {
-    const data = snapshot.val() || {};
+  db.ref('reservations').on('value', function(snapshot) {
+    var data = snapshot.val() || {};
     reservations = {};
     professeurs.forEach(p => {
       (p.heures || heures).forEach(h => {
         reservations[getSlotKey(p.id, h)] = 'libre';
       });
     });
-    Object.entries(data).forEach(([key, val]) => {
-      if (val && val.state) reservations[key] = val.state;
+    Object.keys(data).forEach(function(key) {
+      if (data[key] && data[key].state) reservations[key] = data[key].state;
     });
     renderProfs();
     updateBadge();
-  }, (err) => {
-    console.warn('Firebase erreur:', err);
+  }, function(err) {
+    console.warn('Firebase indisponible, mode local:', err);
   });
 }
 
 function setSlot(key, state, info) {
   if (state === 'libre') {
-    return db.ref('reservations/' + key).remove();
+    db.ref('reservations/' + key).remove();
   } else {
-    return db.ref('reservations/' + key).set({ state, ...info });
+    var obj = { state: state };
+    if (info) { obj.parent = info.parent; obj.eleve = info.eleve; }
+    db.ref('reservations/' + key).set(obj);
   }
 }
 
-// ---- CONFIG ----
 function toggleConfig() {
-  const panel = document.getElementById('config-panel');
-  const opening = !panel.classList.contains('open');
+  var panel = document.getElementById('config-panel');
+  var opening = !panel.classList.contains('open');
   if (opening) { renderConfigProfs(); renderConfigHoraires(); syncGeneralFields(); }
   panel.classList.toggle('open');
   document.getElementById('save-feedback').classList.remove('show');
 }
 
 function showConfigTab(t) {
-  document.querySelectorAll('.config-section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.config-tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.config-section').forEach(function(s){ s.classList.remove('active'); });
+  document.querySelectorAll('.config-tab').forEach(function(b){ b.classList.remove('active'); });
   document.getElementById('cfg-' + t).classList.add('active');
   event.currentTarget.classList.add('active');
 }
@@ -353,10 +353,10 @@ function syncGeneralFields() {
 }
 
 function renderConfigHoraires() {
-  const grid = document.getElementById('horaires-grid');
-  grid.innerHTML = heures.map((h, i) =>
-    `<div class="horaire-row"><span class="horaire-num">${i+1}.</span><input class="horaire-input" id="hor-${i}" value="${h}" placeholder="ex: 14h30" /></div>`
-  ).join('');
+  var grid = document.getElementById('horaires-grid');
+  grid.innerHTML = heures.map(function(h, i) {
+    return '<div class="horaire-row"><span class="horaire-num">' + (i+1) + '.</span><input class="horaire-input" id="hor-' + i + '" value="' + h + '" placeholder="ex: 14h30" /></div>';
+  }).join('');
 }
 
 function addHoraire() {
@@ -372,137 +372,116 @@ function removeLastHoraire() {
 }
 
 function renderConfigProfs() {
-  const grid = document.getElementById('config-grid');
-  grid.innerHTML = professeurs.map((p, i) => {
-    const c = avatarColors[p.color];
-    return `<div class="config-row">
-      <div class="config-avatar" id="cfg-avatar-${i}" style="background:${c.bg};color:${c.color};">${p.initiales}</div>
-      <div class="config-inputs">
-        <input class="config-input" id="cfg-nom-${i}" value="${p.nom}" placeholder="Nom" oninput="updateAvatar(${i})" />
-        <div class="config-sep"></div>
-        <input class="config-input config-input-mat" id="cfg-mat-${i}" value="${p.matiere}" placeholder="Matière" />
-        <div class="config-sep"></div>
-        <input class="config-input config-input-mat" id="cfg-ini-${i}" value="${p.initiales}" placeholder="Initiales" maxlength="3" oninput="updateAvatar(${i})" style="width:80px;" />
-      </div>
-    </div>`;
+  var grid = document.getElementById('config-grid');
+  grid.innerHTML = professeurs.map(function(p, i) {
+    var c = avatarColors[p.color];
+    return '<div class="config-row"><div class="config-avatar" id="cfg-avatar-' + i + '" style="background:' + c.bg + ';color:' + c.color + ';">' + p.initiales + '</div><div class="config-inputs"><input class="config-input" id="cfg-nom-' + i + '" value="' + p.nom + '" placeholder="Nom" oninput="updateAvatar(' + i + ')" /><div class="config-sep"></div><input class="config-input config-input-mat" id="cfg-mat-' + i + '" value="' + p.matiere + '" placeholder="Matière" /><div class="config-sep"></div><input class="config-input config-input-mat" id="cfg-ini-' + i + '" value="' + p.initiales + '" placeholder="Initiales" maxlength="3" oninput="updateAvatar(' + i + ')" style="width:80px;" /></div></div>';
   }).join('');
 }
 
 function updateAvatar(i) {
-  const ini = document.getElementById('cfg-ini-' + i).value.trim().toUpperCase() || '??';
+  var ini = document.getElementById('cfg-ini-' + i).value.trim().toUpperCase() || '??';
   document.getElementById('cfg-avatar-' + i).textContent = ini;
 }
 
 function saveConfig() {
-  const titre = document.getElementById('cfg-titre').value.trim();
-  const sousTitre = document.getElementById('cfg-sous-titre').value.trim();
+  var titre = document.getElementById('cfg-titre').value.trim();
+  var sousTitre = document.getElementById('cfg-sous-titre').value.trim();
   if (titre) { document.getElementById('header-title').textContent = titre; document.title = titre; }
   if (sousTitre) document.getElementById('header-sub').textContent = sousTitre;
-  const newHeures = [];
-  heures.forEach((_, i) => {
-    const val = document.getElementById('hor-' + i).value.trim();
+  var newHeures = [];
+  heures.forEach(function(_, i) {
+    var val = document.getElementById('hor-' + i).value.trim();
     if (val) newHeures.push(val);
   });
   if (newHeures.length > 0) heures = newHeures;
-  professeurs.forEach((p, i) => {
+  professeurs.forEach(function(p, i) {
     p.nom = document.getElementById('cfg-nom-' + i).value.trim() || p.nom;
     p.matiere = document.getElementById('cfg-mat-' + i).value.trim() || p.matiere;
     p.initiales = document.getElementById('cfg-ini-' + i).value.trim().toUpperCase() || p.initiales;
   });
   renderProfs();
-  const fb = document.getElementById('save-feedback');
+  var fb = document.getElementById('save-feedback');
   fb.classList.add('show');
-  setTimeout(() => fb.classList.remove('show'), 2500);
+  setTimeout(function(){ fb.classList.remove('show'); }, 2500);
 }
 
-// ---- RENDU ----
 function renderProfs() {
-  const container = document.getElementById('profs-list');
+  var container = document.getElementById('profs-list');
   if (!container) return;
   container.innerHTML = '';
-  professeurs.forEach(p => {
-    const c = avatarColors[p.color];
-    const card = document.createElement('div');
+  professeurs.forEach(function(p) {
+    var c = avatarColors[p.color];
+    var card = document.createElement('div');
     card.className = 'card';
-    const profHeures = p.heures || heures;
-    const slots = profHeures.map(h => {
-      const key = getSlotKey(p.id, h);
-      const isMine = !!myReservations[key];
-      const fbState = reservations[key] || 'libre';
-      const state = isMine ? 'reserve-moi' : (fbState === 'libre' ? 'disponible' : 'reserve-autre');
-      const label = state === 'reserve-moi' ? '<div class="slot-label">Mon RDV</div>'
-                  : state === 'reserve-autre' ? '<div class="slot-label">Pris</div>' : '';
-      let click = '', extraClass = '';
+    var profHeures = p.heures || heures;
+    var slots = profHeures.map(function(h) {
+      var key = getSlotKey(p.id, h);
+      var isMine = !!myReservations[key];
+      var fbState = reservations[key] || 'libre';
+      var state = isMine ? 'reserve-moi' : (fbState === 'libre' ? 'disponible' : 'reserve-autre');
+      var label = state === 'reserve-moi' ? '<div class="slot-label">Mon RDV</div>' : (state === 'reserve-autre' ? '<div class="slot-label">Pris</div>' : '');
+      var click = '', extraClass = '';
       if (adminMode && state !== 'reserve-moi') {
-        click = `onclick="toggleSlotAdmin('${p.id}','${h}')"`;
+        click = 'onclick="toggleSlotAdmin(\'' + p.id + '\',\'' + h + '\')"';
         extraClass = ' bloquable';
       } else if (!adminMode && state === 'disponible') {
-        click = `onclick="openModal('${p.id}','${h}')"`;
+        click = 'onclick="openModal(\'' + p.id + '\',\'' + h + '\')"';
       }
-      return `<div class="slot ${state}${extraClass}" ${click}><strong>${h}</strong>${label}</div>`;
+      return '<div class="slot ' + state + extraClass + '" ' + click + '><strong>' + h + '</strong>' + label + '</div>';
     }).join('');
-    const myCount = profHeures.filter(h => myReservations[getSlotKey(p.id, h)]).length;
-    const dispoCount = profHeures.filter(h => !myReservations[getSlotKey(p.id,h)] && (reservations[getSlotKey(p.id,h)] || 'libre') === 'libre').length;
-    const badge = myCount > 0
-      ? `<span class="badge badge-green"><i class="ti ti-check" style="font-size:12px;"></i> Réservé</span>`
-      : `<span class="badge badge-blue">${dispoCount} créneaux dispo.</span>`;
-    card.innerHTML = `
-      <div class="prof-header">
-        <div class="avatar" style="background:${c.bg};color:${c.color};">${p.initiales}</div>
-        <div style="flex:1;"><div class="prof-name">${p.nom}</div><div class="prof-matiere">${p.matiere}</div></div>
-        ${badge}
-      </div>
-      <div class="slots-grid">${slots}</div>`;
+    var myCount = profHeures.filter(function(h){ return myReservations[getSlotKey(p.id, h)]; }).length;
+    var dispoCount = profHeures.filter(function(h){ return !myReservations[getSlotKey(p.id,h)] && (reservations[getSlotKey(p.id,h)] || 'libre') === 'libre'; }).length;
+    var badge = myCount > 0
+      ? '<span class="badge badge-green"><i class="ti ti-check" style="font-size:12px;"></i> Réservé</span>'
+      : '<span class="badge badge-blue">' + dispoCount + ' créneaux dispo.</span>';
+    card.innerHTML = '<div class="prof-header"><div class="avatar" style="background:' + c.bg + ';color:' + c.color + ';">' + p.initiales + '</div><div style="flex:1;"><div class="prof-name">' + p.nom + '</div><div class="prof-matiere">' + p.matiere + '</div></div>' + badge + '</div><div class="slots-grid">' + slots + '</div>';
     container.appendChild(card);
   });
 }
 
 function renderMesRdv() {
-  const container = document.getElementById('mes-rdv-list');
-  const keys = Object.keys(myReservations);
+  var container = document.getElementById('mes-rdv-list');
+  var keys = Object.keys(myReservations);
   if (keys.length === 0) {
     container.innerHTML = '<div class="empty-state"><i class="ti ti-calendar"></i><p>Aucun rendez-vous réservé pour l\'instant.</p></div>';
     return;
   }
-  const grouped = {};
-  keys.forEach(k => { const r = myReservations[k]; if (!grouped[r.profId]) grouped[r.profId] = []; grouped[r.profId].push(r); });
-  let html = '';
-  Object.values(grouped).forEach(rdvs => {
-    rdvs.sort((a,b) => a.heure.localeCompare(b.heure));
-    rdvs.forEach(rdv => {
-      const p = professeurs.find(x => x.id === rdv.profId);
-      const c = avatarColors[p.color];
-      html += `<div class="summary-card">
-        <div class="avatar" style="background:${c.bg};color:${c.color};width:38px;height:38px;font-size:12px;">${p.initiales}</div>
-        <div class="summary-info">
-          <div class="summary-title">${p.nom} — ${p.matiere}</div>
-          <div class="summary-sub"><i class="ti ti-clock" style="font-size:14px;"></i> ${rdv.heure} &nbsp;|&nbsp; <i class="ti ti-user" style="font-size:14px;"></i> ${rdv.eleve}</div>
-          <div class="summary-sub" style="margin-top:2px;"><i class="ti ti-users" style="font-size:14px;"></i> ${rdv.parent}</div>
-        </div>
-        <button class="cancel-btn" onclick="cancelRdv('${rdv.key}')"><i class="ti ti-x"></i> Annuler</button>
-      </div>`;
+  var grouped = {};
+  keys.forEach(function(k) {
+    var r = myReservations[k];
+    if (!grouped[r.profId]) grouped[r.profId] = [];
+    grouped[r.profId].push(r);
+  });
+  var html = '';
+  Object.values(grouped).forEach(function(rdvs) {
+    rdvs.sort(function(a,b){ return a.heure.localeCompare(b.heure); });
+    rdvs.forEach(function(rdv) {
+      var p = professeurs.find(function(x){ return x.id === rdv.profId; });
+      var c = avatarColors[p.color];
+      html += '<div class="summary-card"><div class="avatar" style="background:' + c.bg + ';color:' + c.color + ';width:38px;height:38px;font-size:12px;">' + p.initiales + '</div><div class="summary-info"><div class="summary-title">' + p.nom + ' — ' + p.matiere + '</div><div class="summary-sub"><i class="ti ti-clock" style="font-size:14px;"></i> ' + rdv.heure + ' &nbsp;|&nbsp; <i class="ti ti-user" style="font-size:14px;"></i> ' + rdv.eleve + '</div><div class="summary-sub" style="margin-top:2px;"><i class="ti ti-users" style="font-size:14px;"></i> ' + rdv.parent + '</div></div><button class="cancel-btn" onclick="cancelRdv(\'' + rdv.key + '\')"><i class="ti ti-x"></i> Annuler</button></div>';
     });
   });
   container.innerHTML = html;
 }
 
 function updateBadge() {
-  const count = Object.keys(myReservations).length;
-  document.getElementById('rdv-count-badge').innerHTML = count > 0 ? `<span class="rdv-badge">${count}</span>` : '';
+  var count = Object.keys(myReservations).length;
+  document.getElementById('rdv-count-badge').innerHTML = count > 0 ? '<span class="rdv-badge">' + count + '</span>' : '';
 }
 
 function showTab(t) {
   document.getElementById('tab-profs').style.display = t === 'profs' ? '' : 'none';
   document.getElementById('tab-mes-rdv').style.display = t === 'mes-rdv' ? '' : 'none';
-  document.querySelectorAll('.tab').forEach((el,i) => el.classList.toggle('active', (i===0&&t==='profs')||(i===1&&t==='mes-rdv')));
+  document.querySelectorAll('.tab').forEach(function(el,i){ el.classList.toggle('active', (i===0&&t==='profs')||(i===1&&t==='mes-rdv')); });
   if (t === 'mes-rdv') renderMesRdv();
 }
 
 function openModal(profId, heure) {
-  const p = professeurs.find(x => x.id === profId);
-  pendingSlot = { profId, heure };
-  document.getElementById('modal-title').textContent = `Réserver avec ${p.nom}`;
-  document.getElementById('modal-sub').textContent = `${p.matiere} — Créneau : ${heure}`;
+  var p = professeurs.find(function(x){ return x.id === profId; });
+  pendingSlot = { profId: profId, heure: heure };
+  document.getElementById('modal-title').textContent = 'Réserver avec ' + p.nom;
+  document.getElementById('modal-sub').textContent = p.matiere + ' — Créneau : ' + heure;
   document.getElementById('modal-name').value = '';
   document.getElementById('modal-eleve').value = '';
   document.getElementById('modal').style.display = 'flex';
@@ -512,44 +491,30 @@ function closeModal() { document.getElementById('modal').style.display = 'none';
 
 function confirmReservation() {
   if (!pendingSlot) return;
-  const name = document.getElementById('modal-name').value.trim();
-  const eleve = document.getElementById('modal-eleve').value.trim();
+  var name = document.getElementById('modal-name').value.trim();
+  var eleve = document.getElementById('modal-eleve').value.trim();
   if (!name || !eleve) { alert('Merci de renseigner votre nom et celui de l\'élève.'); return; }
-
-  const dejaPourCeProf = Object.values(myReservations).find(r => r.profId === pendingSlot.profId);
-  if (dejaPourCeProf) {
-    alert('Vous avez déjà un rendez-vous avec ce formateur à ' + dejaPourCeProf.heure + '.\nAnnulez-le d\'abord si vous souhaitez changer de créneau.');
-    closeModal(); return;
-  }
-  const conflitHeure = Object.values(myReservations).find(r => r.heure === pendingSlot.heure);
-  if (conflitHeure) {
-    const p = professeurs.find(x => x.id === conflitHeure.profId);
-    alert('Vous avez déjà un rendez-vous à ' + pendingSlot.heure + ' avec ' + p.nom + '.\nChoisissez un autre créneau.');
-    closeModal(); return;
-  }
-  const key = getSlotKey(pendingSlot.profId, pendingSlot.heure);
-  if (reservations[key] && reservations[key] !== 'libre') {
-    alert('Ce créneau vient d\'être pris. Veuillez en choisir un autre.');
-    closeModal(); return;
-  }
-  setSlot(key, 'pris', { parent: name, eleve });
-  myReservations[key] = { key, profId: pendingSlot.profId, heure: pendingSlot.heure, parent: name, eleve };
-  closeModal();
-  updateBadge();
+  var dejaPourCeProf = Object.values(myReservations).find(function(r){ return r.profId === pendingSlot.profId; });
+  if (dejaPourCeProf) { alert('Vous avez déjà un rendez-vous avec ce formateur à ' + dejaPourCeProf.heure + '.\nAnnulez-le d\'abord.'); closeModal(); return; }
+  var conflitHeure = Object.values(myReservations).find(function(r){ return r.heure === pendingSlot.heure; });
+  if (conflitHeure) { var pp = professeurs.find(function(x){ return x.id === conflitHeure.profId; }); alert('Vous avez déjà un rendez-vous à ' + pendingSlot.heure + ' avec ' + pp.nom + '.\nChoisissez un autre créneau.'); closeModal(); return; }
+  var key = getSlotKey(pendingSlot.profId, pendingSlot.heure);
+  if (reservations[key] && reservations[key] !== 'libre') { alert('Ce créneau vient d\'être pris. Veuillez en choisir un autre.'); closeModal(); return; }
+  setSlot(key, 'pris', { parent: name, eleve: eleve });
+  myReservations[key] = { key: key, profId: pendingSlot.profId, heure: pendingSlot.heure, parent: name, eleve: eleve };
+  closeModal(); updateBadge();
 }
 
 function cancelRdv(key) {
   if (!myReservations[key]) return;
   setSlot(key, 'libre');
   delete myReservations[key];
-  renderMesRdv();
-  updateBadge();
+  renderMesRdv(); updateBadge();
 }
 
 document.getElementById('modal').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
 
-// ---- ADMIN ----
-const ADMIN_PASSWORD = '1234';
+var ADMIN_PASSWORD = '1234';
 
 function toggleAdmin() {
   if (adminMode) { adminMode = false; updateAdminUI(); return; }
@@ -560,42 +525,33 @@ function showPasswordModal() {
   document.getElementById('pwd-modal').style.display = 'flex';
   document.getElementById('pwd-input').value = '';
   document.getElementById('pwd-error').style.display = 'none';
-  setTimeout(() => document.getElementById('pwd-input').focus(), 50);
+  setTimeout(function(){ document.getElementById('pwd-input').focus(); }, 50);
 }
 
 function closePwdModal() { document.getElementById('pwd-modal').style.display = 'none'; }
 
 function confirmPassword() {
-  const val = document.getElementById('pwd-input').value;
-  if (val === ADMIN_PASSWORD) {
-    adminMode = true; closePwdModal(); updateAdminUI();
-  } else {
-    document.getElementById('pwd-error').style.display = 'block';
-    document.getElementById('pwd-input').value = '';
-    document.getElementById('pwd-input').focus();
-  }
+  var val = document.getElementById('pwd-input').value;
+  if (val === ADMIN_PASSWORD) { adminMode = true; closePwdModal(); updateAdminUI(); }
+  else { document.getElementById('pwd-error').style.display = 'block'; document.getElementById('pwd-input').value = ''; document.getElementById('pwd-input').focus(); }
 }
 
 function updateAdminUI() {
-  const btn = document.getElementById('btn-admin');
-  const banner = document.getElementById('admin-banner');
+  var btn = document.getElementById('btn-admin');
+  var banner = document.getElementById('admin-banner');
   btn.classList.toggle('admin-on', adminMode);
-  btn.innerHTML = adminMode
-    ? '<i class="ti ti-lock-open"></i> Mode admin ON'
-    : '<i class="ti ti-lock"></i> Mode admin';
+  btn.innerHTML = adminMode ? '<i class="ti ti-lock-open"></i> Mode admin ON' : '<i class="ti ti-lock"></i> Mode admin';
   banner.classList.toggle('show', adminMode);
   renderProfs();
 }
 
 function toggleSlotAdmin(profId, heure) {
-  const key = getSlotKey(profId, heure);
+  var key = getSlotKey(profId, heure);
   if (myReservations[key]) return;
-  const current = reservations[key] || 'libre';
-  const newState = current === 'autre' ? 'libre' : 'autre';
-  setSlot(key, newState);
+  var current = reservations[key] || 'libre';
+  setSlot(key, current === 'autre' ? 'libre' : 'autre');
 }
 
-// ---- INIT ----
 initLocal();
 listenFirebase();
 </script>
